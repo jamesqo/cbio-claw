@@ -1,5 +1,8 @@
 # ignore data dirs
-hermes-work
+hermes-brains
 
 # local make overrides (machine-specific)
 local.mk
+
+# local env (use .env.example as template)
+.env

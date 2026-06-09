@@ -7,11 +7,11 @@ HERMES_PROFILE ?= work
 -include local.mk
 
 DOCKER_DIR := docker
-ENV_FILE := $(DOCKER_DIR)/.env.$(HERMES_PROFILE)
+ENV_FILE := .env
 
 # All docker compose commands pick up the env file
-COMPOSE := docker compose --env-file $(ENV_FILE) -f $(DOCKER_DIR)/docker-compose.yml -f $(DOCKER_DIR)/docker-compose.work.yml
-COMPOSE_TEST := docker compose --env-file $(ENV_FILE) -f $(DOCKER_DIR)/docker-compose.yml -f $(DOCKER_DIR)/docker-compose.test.yml
+COMPOSE := docker compose --env-file $(ENV_FILE) -f docker-compose.yml
+COMPOSE_TEST := docker compose --env-file $(ENV_FILE) -f docker-compose.yml -f docker-compose.test.yml
 
 # Resolve the data dir from the env file at make-parse time so targets can
 # reference it (e.g. for the sync target).
@@ -31,8 +31,6 @@ help: ## Show this help message
 	@echo ""
 	@grep -E '^[a-zA-Z_-]+:.*##' $(MAKEFILE_LIST) \
 		| awk 'BEGIN {FS = ":.*##"}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
-	@echo ""
-
 	@echo ""
 
 # ── Build ─────────────────────────────────────────────────────────────────────

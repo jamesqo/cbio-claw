@@ -33,11 +33,10 @@ A customized deployment of [Hermes Agent](https://get-hermes.ai/) tuned for cBio
 - Docker + Docker Compose v2
 - A Hermes Agent Docker image built either from the [upstream repo](https://github.com/NousResearch/hermes-agent) or pulled from `nousresearch/hermes-agent:latest`
 
-### 1. Clone & Choose a Profile
+### 1. Clone
 
 ```bash
 git clone <this-repo> && cd cbio-claw
-echo "HERMES_PROFILE := work" > local.mk
 ```
 
 ### 2. Create Data Directory
@@ -50,7 +49,17 @@ mkdir -p ../hermes-work
 
 ### 3. Configure Environment Variables
 
-Create a `.env` file inside your data directory (`../hermes-work/.env`) with the API keys your agent needs. At minimum:
+There are **two separate `.env` files** — one for Docker Compose infrastructure, one for the agent's runtime secrets:
+
+**`<repo>/.env`** — Docker Compose variables (image name, ports, paths, host UID/GID).
+Copy the example and fill in your values:
+
+```bash
+cp .env.example .env
+# then edit .env — at minimum set HERMES_UID/HERMES_GID to your `id -u` / `id -g`
+```
+
+**`../hermes-work/.env`** — Runtime secrets loaded into the containers. Create this file with the API keys your agent needs:
 
 ```bash
 # Required
@@ -65,7 +74,7 @@ TAVILY_API_KEY=tvly-...
 
 > **File permissions note:** The container runs as the `hermes` user, but files it writes to the mounted data volume (`../hermes-work`) need to be owned by *your* host user — otherwise you'd need `sudo` to read or edit them.
 >
-> The Docker entrypoint handles this by remapping the container's `hermes` user to match your host UID/GID at startup. These are set in `docker/.env.work`:
+> The base image handles this by remapping the container's `hermes` user to match your host UID/GID at startup via s6-overlay. These are set in `.env` (see `.env.example`):
 >
 > ```bash
 > HERMES_UID=501       # Your host UID — run `id -u` to find yours

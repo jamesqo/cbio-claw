@@ -7,8 +7,7 @@ services:
         volumes:
             - ${HERMES_DATA}:/opt/data
             - /var/run/docker.sock:/var/run/docker.sock
-            - ./docker-entrypoint.sh:/docker-entrypoint.sh:ro
-        entrypoint: ["/docker-entrypoint.sh"]
+            - ${REPO_ROOT}:/Code
         command: gateway run
         ports:
             - "${HERMES_PORT}:8642"
@@ -37,6 +36,7 @@ services:
 
         volumes:
             - ${HERMES_DATA}:/opt/data
+            - ${REPO_ROOT}:/Code
         stdin_open: true
         tty: true
         command: chat
