@@ -1,0 +1,44 @@
+services:
+    hermes-gateway:
+        image: ${HERMES_IMAGE}
+        container_name: hermes-gateway
+        restart: unless-stopped
+
+        volumes:
+            - ${HERMES_DATA}:/opt/data
+            - /var/run/docker.sock:/var/run/docker.sock
+            - ./docker-entrypoint.sh:/docker-entrypoint.sh:ro
+        entrypoint: ["/docker-entrypoint.sh"]
+        command: gateway run
+        ports:
+            - "${HERMES_PORT}:8642"
+        env_file:
+            - ${HERMES_DATA}/.env
+
+    hermes-dashboard:
+        profiles:
+            - dashboard
+        image: ${HERMES_IMAGE}
+        container_name: hermes-dashboard
+        restart: unless-stopped
+        volumes:
+            - ${HERMES_DATA}:/opt/data
+        command: dashboard --no-open --insecure --host 0.0.0.0 --port ${HERMES_DASHBOARD_PORT}
+        ports:
+            - "${HERMES_DASHBOARD_PORT}:${HERMES_DASHBOARD_PORT}"
+        env_file:
+            - ${HERMES_DATA}/.env
+
+    hermes-cli:
+        profiles:
+            - cli
+        image: ${HERMES_IMAGE}
+        container_name: hermes-cli
+
+        volumes:
+            - ${HERMES_DATA}:/opt/data
+        stdin_open: true
+        tty: true
+        command: chat
+        env_file:
+            - ${HERMES_DATA}/.env

@@ -1,0 +1,33 @@
+# Test overrides — applied on top of docker-compose.yml
+services:
+    hermes-gateway:
+        container_name: hermes-gateway-test
+        restart: "no"
+        command: gateway run -vv
+        environment:
+            - API_SERVER_HOST=0.0.0.0
+            - API_SERVER_KEY=${API_SERVER_KEY}
+        env_file:
+            - ${HERMES_DATA}/.env
+        healthcheck:
+            test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8642/health')"]
+            interval: 5s
+            timeout: 5s
+            retries: 20
+            start_period: 10s
+
+    hermes-test:
+        image: ${HERMES_IMAGE}
+        container_name: hermes-test-runner
+        depends_on:
+            hermes-gateway:
+                condition: service_healthy
+        environment:
+            - HERMES_GATEWAY_URL=http://hermes-gateway:${HERMES_PORT}/v1
+        env_file:
+            - ${HERMES_DATA}/.env
+        working_dir: /tmp/tests
+        volumes:
+            - ${HERMES_DATA}:/opt/data
+            - ../tests:/tmp/tests:ro
+        command: pytest -vv -s /tmp/tests

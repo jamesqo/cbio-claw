@@ -1,0 +1,5 @@
+# ignore data dirs
+hermes-work
+
+# local make overrides (machine-specific)
+local.mk

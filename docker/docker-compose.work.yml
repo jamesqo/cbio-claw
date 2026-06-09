@@ -1,0 +1,10 @@
+# Work overrides — applied on top of docker-compose.yml
+x-code-volumes: &code-volumes
+    - ${REPO_ROOT}:/Code
+
+services:
+    hermes-gateway:
+        volumes: *code-volumes
+
+    hermes-cli:
+        volumes: *code-volumes
