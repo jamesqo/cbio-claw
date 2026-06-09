@@ -1,9 +1,9 @@
-FROM nousresearch/hermes-agent:latest
+FROM nousresearch/hermes-agent:v2026.4.16
 
 USER root
 
 RUN apt-get update && \
-    apt-get install -y git gh openjdk-21-jdk-headless maven nodejs npm && \
+    apt-get install -y curl git gh openjdk-21-jdk-headless maven nodejs npm && \
     cd /tmp && curl https://clickhouse.com/ | sh && \
     ./clickhouse install --noninteractive && \
     rm -rf /var/lib/apt/lists/*

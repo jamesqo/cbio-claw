@@ -7,7 +7,9 @@ services:
         volumes:
             - ${HERMES_DATA}:/opt/data
             - /var/run/docker.sock:/var/run/docker.sock
+            - ./docker/docker-entrypoint.sh:/docker-entrypoint.sh:ro
             - ${REPO_ROOT}:/Code
+        entrypoint: ["/docker-entrypoint.sh"]
         command: gateway run
         ports:
             - "${HERMES_PORT}:8642"
