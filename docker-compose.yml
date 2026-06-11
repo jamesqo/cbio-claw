@@ -1,7 +1,7 @@
 services:
-    hermes-gateway:
+    hermes-cbio-gateway:
         image: ${HERMES_IMAGE}
-        container_name: hermes-gateway
+        container_name: hermes-cbio-gateway
         restart: unless-stopped
 
         volumes:
@@ -13,14 +13,19 @@ services:
         command: gateway run
         ports:
             - "${HERMES_PORT}:8642"
+        environment:
+            - API_SERVER_HOST=0.0.0.0
+            - API_SERVER_KEY=${API_SERVER_KEY}
+            - HERMES_UID=${HERMES_UID}
+            - HERMES_GID=${HERMES_GID}
         env_file:
             - ${HERMES_DATA}/.env
 
-    hermes-dashboard:
+    hermes-cbio-dashboard:
         profiles:
             - dashboard
         image: ${HERMES_IMAGE}
-        container_name: hermes-dashboard
+        container_name: hermes-cbio-dashboard
         restart: unless-stopped
         volumes:
             - ${HERMES_DATA}:/opt/data
@@ -30,11 +35,11 @@ services:
         env_file:
             - ${HERMES_DATA}/.env
 
-    hermes-cli:
+    hermes-cbio-cli:
         profiles:
             - cli
         image: ${HERMES_IMAGE}
-        container_name: hermes-cli
+        container_name: hermes-cbio-cli
 
         volumes:
             - ${HERMES_DATA}:/opt/data

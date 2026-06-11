@@ -1,8 +1,5 @@
-# ignore data dirs
-hermes-brains
+hermes-data/
 
-# local make overrides (machine-specific)
-local.mk
-
-# local env (use .env.example as template)
-.env
+!hermes-data/.env.EXAMPLE
+!hermes-data/SOUL.md
+!hermes-data/config.yaml

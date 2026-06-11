@@ -31,7 +31,7 @@ A customized deployment of [Hermes Agent](https://get-hermes.ai/) tuned for cBio
 ### Prerequisites
 
 - Docker + Docker Compose v2
-- A Hermes Agent Docker image built either from the [upstream repo](https://github.com/NousResearch/hermes-agent) or pulled from `nousresearch/hermes-agent:latest`
+- A Hermes Agent Docker image built either from the [upstream repo](https://github.com/NousResearch/hermes-agent) or pulled from `nousresearch/hermes-agent:v2026.4.16` (pinned to a pre-s6-overlay version)
 
 ### 1. Clone
 
@@ -39,29 +39,26 @@ A customized deployment of [Hermes Agent](https://get-hermes.ai/) tuned for cBio
 git clone <this-repo> && cd cbio-claw
 ```
 
-### 2. Create Data Directory
+### 2. Configure Docker Compose Variables
 
-Create a data directory for persistent config, credentials, and state:
+The `docker-compose.env` file is tracked in git with sensible defaults. Edit it to match your system before building:
 
 ```bash
-mkdir -p ../hermes-work
+# At minimum, set HERMES_UID/HERMES_GID to your `id -u` / `id -g`
 ```
 
-### 3. Configure Environment Variables
+The `HERMES_DATA` variable in `docker-compose.env` tells Compose where the agent's persistent data lives (config, credentials, state). By default this points to `./hermes-data` — a subdirectory inside the repo (the `.env` file is gitignored, but a `.env.EXAMPLE` template is tracked).
 
-There are **two separate `.env` files** — one for Docker Compose infrastructure, one for the agent's runtime secrets:
+### 3. Create the Runtime Secrets File
 
-**`<repo>/.env`** — Docker Compose variables (image name, ports, paths, host UID/GID).
-Copy the example and fill in your values:
+The repo ships with a template at `hermes-data/.env.EXAMPLE`. Copy it to `.env` and fill in your API keys:
 
 ```bash
-cp .env.example .env
-# then edit .env — at minimum set HERMES_UID/HERMES_GID to your `id -u` / `id -g`
+cp hermes-data/.env.EXAMPLE hermes-data/.env
 ```
 
-**`../hermes-work/.env`** — Runtime secrets loaded into the containers. Create this file with the API keys your agent needs:
-
 ```bash
+# ./hermes-data/.env  — runtime secrets loaded into the containers
 # Required
 OPENAI_API_KEY=sk-...       # or whichever LLM provider you use
 HERMES_API_SERVER_KEY=...   # API key for the gateway server
@@ -72,9 +69,9 @@ SLACK_APP_TOKEN=xapp-...
 TAVILY_API_KEY=tvly-...
 ```
 
-> **File permissions note:** The container runs as the `hermes` user, but files it writes to the mounted data volume (`../hermes-work`) need to be owned by *your* host user — otherwise you'd need `sudo` to read or edit them.
+> **File permissions note:** The container runs as the `hermes` user, but files it writes to the mounted data volume (`./hermes-data`) need to be owned by *your* host user — otherwise you'd need `sudo` to read or edit them.
 >
-> The base image handles this by remapping the container's `hermes` user to match your host UID/GID at startup via s6-overlay. These are set in `.env` (see `.env.example`):
+> The base image handles this by remapping the container's `hermes` user to match your host UID/GID at startup (via `usermod` + `gosu` in the entrypoint). These are set in `docker-compose.env`:
 >
 > ```bash
 > HERMES_UID=501       # Your host UID — run `id -u` to find yours
@@ -115,6 +112,7 @@ The gateway exposes an OpenAI-compatible API at `http://localhost:8642/v1` by de
 | `make gateway` | Start the gateway daemon |
 | `make gateway-logs` | Tail gateway logs |
 | `make cli` | Ephemeral interactive chat session |
+| `make shell` | Ephemeral bash shell (run `hermes model`, `hermes doctor`, etc.) |
 | `make dashboard` | Start the web dashboard |
 | `make test` | Run the integration test suite |
 | `make down` | Tear down all containers |

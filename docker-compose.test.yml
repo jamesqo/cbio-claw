@@ -1,7 +1,7 @@
 # Test overrides — applied on top of docker-compose.yml
 services:
-    hermes-gateway:
-        container_name: hermes-gateway-test
+    hermes-cbio-gateway:
+        container_name: hermes-cbio-gateway-test
         restart: "no"
         command: gateway run -vv
         environment:
@@ -20,10 +20,10 @@ services:
         image: ${HERMES_IMAGE}
         container_name: hermes-test-runner
         depends_on:
-            hermes-gateway:
+            hermes-cbio-gateway:
                 condition: service_healthy
         environment:
-            - HERMES_GATEWAY_URL=http://hermes-gateway:${HERMES_PORT}/v1
+            - HERMES_GATEWAY_URL=http://hermes-cbio-gateway:${HERMES_PORT}/v1
         env_file:
             - ${HERMES_DATA}/.env
         working_dir: /tmp/tests

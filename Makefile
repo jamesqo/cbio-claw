@@ -3,11 +3,8 @@
 #  Usage: make <target>
 # ============================================================
 
-HERMES_PROFILE ?= work
--include local.mk
-
 DOCKER_DIR := docker
-ENV_FILE := .env
+ENV_FILE := docker-compose.env
 
 # All docker compose commands pick up the env file
 COMPOSE := docker compose --env-file $(ENV_FILE) -f docker-compose.yml
@@ -36,8 +33,8 @@ help: ## Show this help message
 # ── Build ─────────────────────────────────────────────────────────────────────
 
 .PHONY: build
-build: ## Build the Docker image for the current profile
-	docker build --build-arg HERMES_PROFILE=$(HERMES_PROFILE) \
+build: ## Build the Docker image
+	docker build \
 		-t $(shell grep -E '^HERMES_IMAGE=' $(ENV_FILE) | cut -d= -f2-) \
 		-f $(DOCKER_DIR)/Dockerfile \
 		$(DOCKER_DIR)
@@ -46,38 +43,42 @@ build: ## Build the Docker image for the current profile
 
 .PHONY: gateway
 gateway: ## (Re)start the gateway in the background
-	$(COMPOSE) down hermes-gateway || true
-	$(COMPOSE) up -d hermes-gateway
+	$(COMPOSE) down hermes-cbio-gateway || true
+	$(COMPOSE) up -d hermes-cbio-gateway
 
 .PHONY: gateway-logs
 gateway-logs: ## Tail gateway logs
-	$(COMPOSE) logs -f hermes-gateway
+	$(COMPOSE) logs -f hermes-cbio-gateway
 
 .PHONY: gateway-stop
 gateway-stop: ## Stop the gateway
-	$(COMPOSE) stop hermes-gateway
+	$(COMPOSE) stop hermes-cbio-gateway
 
 # ── Dashboard ─────────────────────────────────────────────────────────────────
 
 .PHONY: dashboard
 dashboard: ## (Re)start the dashboard in the background
-	$(COMPOSE) --profile dashboard down hermes-dashboard || true
-	$(COMPOSE) --profile dashboard up -d hermes-dashboard
+	$(COMPOSE) --profile dashboard down hermes-cbio-dashboard || true
+	$(COMPOSE) --profile dashboard up -d hermes-cbio-dashboard
 	@echo "Dashboard running at http://localhost:$(DASHBOARD_PORT)"
 
 .PHONY: dashboard-logs
 dashboard-logs: ## Tail dashboard logs
-	$(COMPOSE) --profile dashboard logs -f hermes-dashboard
+	$(COMPOSE) --profile dashboard logs -f hermes-cbio-dashboard
 
 .PHONY: dashboard-stop
 dashboard-stop: ## Stop the dashboard
-	$(COMPOSE) --profile dashboard stop hermes-dashboard
+	$(COMPOSE) --profile dashboard stop hermes-cbio-dashboard
 
-# ── CLI ───────────────────────────────────────────────────────────────────────
+# ── Shell / CLI ───────────────────────────────────────────────────────────────
 
 .PHONY: cli
 cli: ## Open an interactive chat session (--rm; ephemeral)
-	$(COMPOSE) --profile cli run --rm hermes-cli
+	$(COMPOSE) --profile cli run --rm hermes-cbio-cli
+
+.PHONY: shell
+shell: ## Open a bash shell in the container (--rm; ephemeral)
+	$(COMPOSE) --profile cli run --rm --entrypoint /bin/bash hermes-cbio-cli
 
 # ── Init ──────────────────────────────────────────────────────────────────────
 
@@ -91,7 +92,7 @@ init: ## Run the one-time init container
 .PHONY: test
 test: ## Run the full test suite (pass ARGS="..." to forward pytest args)
 	$(COMPOSE_TEST) down -v --remove-orphans || true
-	$(COMPOSE_TEST) up -d hermes-gateway
+	$(COMPOSE_TEST) up -d hermes-cbio-gateway
 	$(COMPOSE_TEST) run --rm hermes-test $(if $(ARGS),pytest -vv -s $(ARGS),) ; \
 		EXIT=$$? ; \
 		$(COMPOSE_TEST) down -v --remove-orphans ; \

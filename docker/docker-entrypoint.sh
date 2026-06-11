@@ -25,4 +25,4 @@ fi
 DOCKER_GROUP=$(getent group "$DOCKER_GID" | cut -d: -f1)
 usermod -aG "$DOCKER_GROUP" hermes
 
-exec /opt/hermes/docker/entrypoint.sh "$@"
+exec /init /opt/hermes/docker/main-wrapper.sh "$@"
