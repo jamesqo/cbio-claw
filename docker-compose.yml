@@ -34,18 +34,3 @@ services:
             - "${HERMES_DASHBOARD_PORT}:${HERMES_DASHBOARD_PORT}"
         env_file:
             - ${HERMES_DATA}/.env
-
-    hermes-cbio-cli:
-        profiles:
-            - cli
-        image: ${HERMES_IMAGE}
-        container_name: hermes-cbio-cli
-
-        volumes:
-            - ${HERMES_DATA}:/opt/data
-            - ${REPO_ROOT}:/Code
-        stdin_open: true
-        tty: true
-        command: chat
-        env_file:
-            - ${HERMES_DATA}/.env

@@ -73,12 +73,12 @@ dashboard-stop: ## Stop the dashboard
 # ── Shell / CLI ───────────────────────────────────────────────────────────────
 
 .PHONY: cli
-cli: ## Open an interactive chat session (--rm; ephemeral)
-	$(COMPOSE) --profile cli run --rm hermes-cbio-cli
+cli: ## Open an interactive chat session (exec into running gateway)
+	docker exec -it hermes-cbio-gateway hermes chat
 
 .PHONY: shell
-shell: ## Open a bash shell in the container (--rm; ephemeral)
-	$(COMPOSE) --profile cli run --rm --entrypoint /bin/bash hermes-cbio-cli
+shell: ## Open a bash shell in the running gateway container
+	docker exec -it hermes-cbio-gateway /bin/bash
 
 # ── Init ──────────────────────────────────────────────────────────────────────
 
@@ -86,6 +86,21 @@ shell: ## Open a bash shell in the container (--rm; ephemeral)
 init: ## Run the one-time init container
 	$(COMPOSE) run --rm hermes-init
 
+
+# ── oMLX (local Apple Silicon inference) ──────────────────────────────────────
+
+.PHONY: setup-omlx
+setup-omlx: ## Install & start oMLX on this Mac (requires macOS 15+ and Apple Silicon)
+	PORT=$(PORT) bash scripts/setup-omlx.sh
+
+.PHONY: use-omlx
+use-omlx: ## Switch agent to oMLX  →  make use-omlx MODEL=<model-id> [PORT=8000]  then  make restart
+	@test -n "$(MODEL)" || (echo "Usage: make use-omlx MODEL=<model-id> [PORT=8000]"; exit 1)
+	bash scripts/use-omlx.sh "$(MODEL)" "$(or $(PORT),8000)"
+
+.PHONY: use-copilot
+use-copilot: ## Switch agent back to GitHub Copilot  →  make use-copilot [MODEL=claude-sonnet-4.6]  then  make restart
+	bash scripts/use-copilot.sh "$(or $(MODEL),claude-sonnet-4.6)"
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
 
@@ -104,15 +119,15 @@ test: ## Run the full test suite (pass ARGS="..." to forward pytest args)
 up: gateway dashboard ## Start gateway + dashboard
 
 .PHONY: down
-down: ## Tear down all containers for the current profile
-	$(COMPOSE) --profile dashboard --profile cli down
+down: ## Tear down all containers
+	$(COMPOSE) --profile dashboard down
 
 .PHONY: restart
 restart: down up ## Full restart (gateway + dashboard)
 
 .PHONY: ps
-ps: ## Show running containers for the current profile
-	$(COMPOSE) --profile dashboard --profile cli ps
+ps: ## Show running containers
+	$(COMPOSE) --profile dashboard ps
 
 .PHONY: logs
 logs: ## Tail logs for all running services

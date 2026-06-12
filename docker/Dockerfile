@@ -10,8 +10,6 @@ RUN apt-get update && \
     apt-get install -y curl git gh openjdk-21-jdk-headless maven nodejs npm && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
-RUN npm install -g @github/copilot
-
 USER root
 ENV PATH="/opt/hermes/.venv/bin:$PATH"
 
