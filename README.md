@@ -4,7 +4,7 @@ A customized deployment of [Hermes Agent](https://get-hermes.ai/) tuned for cBio
 
 ## cbio-claw Action Plan
 
-- [x] Set up local LLM inference (oMLX — see [Local Models with oMLX](#local-models-with-omlx))
+- [x] Set up local LLM inference (oMLX — see [docs/setup-omlx.md](docs/setup-omlx.md))
 - [ ] Set up integrations
   - [ ] Slack
   - [ ] GitHub
@@ -116,7 +116,7 @@ The gateway exposes an OpenAI-compatible API at `http://localhost:8642/v1` by de
 | `make dashboard` | Start the web dashboard |
 | `make test` | Run the integration test suite |
 | `make down` | Tear down all containers |
-| `make setup-omlx` | Install & start oMLX on this Mac (see [Local Models](#local-models-with-omlx)) |
+| `make setup-omlx` | Install & start oMLX on this Mac (see [setup-omlx.md](docs/setup-omlx.md)) |
 | `make use-omlx MODEL=<id>` | Switch agent to a local oMLX model, then `make restart` |
 | `make use-copilot` | Switch agent back to GitHub Copilot, then `make restart` |
 
