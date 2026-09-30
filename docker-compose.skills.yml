@@ -1,0 +1,7 @@
+services:
+    hermes-cbio-gateway:
+        volumes:
+            - ${CBIO_SKILL_VAULT:?Set CBIO_SKILL_VAULT to a reviewed cbio-claw-configuration checkout}:/opt/cbio-claw/vault:ro
+        environment:
+            CBIO_SKILL_PRESET: "${CBIO_SKILL_PRESET:-researcher-support}"
+            CBIO_SKILL_CHANNELS: "${CBIO_SKILL_CHANNELS:-}"

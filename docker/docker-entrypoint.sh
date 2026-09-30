@@ -14,6 +14,10 @@
 # This runs as root (container default), before gosu drops privileges.
 set -e
 
+if [ -n "${CBIO_SKILL_PRESET:-}" ]; then
+    (cd /opt/hermes && python -m cbio_claw.vault --data-dir /opt/data --preset "$CBIO_SKILL_PRESET")
+fi
+
 DOCKER_GID=$(stat -c '%g' /var/run/docker.sock)
 
 if ! getent group "$DOCKER_GID" >/dev/null 2>&1; then

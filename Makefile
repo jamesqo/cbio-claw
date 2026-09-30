@@ -37,7 +37,7 @@ build: ## Build the Docker image
 	docker build \
 		-t $(shell grep -E '^HERMES_IMAGE=' $(ENV_FILE) | cut -d= -f2-) \
 		-f $(DOCKER_DIR)/Dockerfile \
-		$(DOCKER_DIR)
+		.
 
 # ── Gateway ───────────────────────────────────────────────────────────────────
 
@@ -103,6 +103,10 @@ use-copilot: ## Switch agent back to GitHub Copilot  →  make use-copilot [MODE
 	bash scripts/use-copilot.sh "$(or $(MODEL),claude-sonnet-4.6)"
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
+
+.PHONY: test-unit
+test-unit: ## Run offline preset and mailing-list regression tests (no gateway or credentials)
+	PYTHONPATH=docker python3 -m unittest discover -s unit-tests -v
 
 .PHONY: test
 test: ## Run the full test suite (pass ARGS="..." to forward pytest args)
