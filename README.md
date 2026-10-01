@@ -31,7 +31,8 @@ A customized deployment of [Hermes Agent](https://get-hermes.ai/) tuned for cBio
 ### Prerequisites
 
 - Docker + Docker Compose v2
-- A Hermes Agent Docker image built either from the [upstream repo](https://github.com/NousResearch/hermes-agent) or pulled from `nousresearch/hermes-agent:v2026.4.16` (pinned to a pre-s6-overlay version)
+- The cBio Claw image built with `docker/Dockerfile`, based on the pinned
+  `nousresearch/hermes-agent:v2026.6.5` runtime
 
 ### 1. Clone
 
@@ -128,6 +129,12 @@ The gateway exposes an OpenAI-compatible API at `http://localhost:8642/v1` by de
 | [GitHub Copilot](docs/setup-copilot.md) | Cloud models (Claude Sonnet/Opus), existing Copilot subscription |
 
 ## Integrations
+
+Skill presets live in the private [cBio Claw configuration repo](https://github.com/cBioPortal/cbio-claw-configuration/tree/modular-skill-presets/presets).
+Select support or engineering with native Hermes profiles and `skills.external_dirs`;
+no runtime preset installer is needed. See [mailing-list replies](docs/mailing-list-replies.md)
+for opt-in automatic suggestions. `make test-unit` runs offline tests without tokens
+or a running gateway (install `requirements-dev.txt` first).
 
 ### Slack
 

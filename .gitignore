@@ -3,3 +3,6 @@ hermes-data/
 !hermes-data/.env.EXAMPLE
 !hermes-data/SOUL.md
 !hermes-data/config.yaml
+
+__pycache__/
+*.pyc
