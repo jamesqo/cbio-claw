@@ -130,11 +130,11 @@ The gateway exposes an OpenAI-compatible API at `http://localhost:8642/v1` by de
 
 ## Integrations
 
-Skill content lives in the private cBio Claw configuration vault. See
-[skill presets](docs/skill-presets.md) for researcher-support/engineering
-selection and [mailing-list replies](docs/mailing-list-replies.md) for opt-in
-automatic suggestions. `make test-unit` checks both offline without tokens or
-a running gateway.
+Skill presets live in the private [cBio Claw configuration repo](https://github.com/cBioPortal/cbio-claw-configuration/tree/modular-skill-presets/presets).
+Select support or engineering with native Hermes profiles and `skills.external_dirs`;
+no runtime preset installer is needed. See [mailing-list replies](docs/mailing-list-replies.md)
+for opt-in automatic suggestions. `make test-unit` runs offline tests without tokens
+or a running gateway (install `requirements-dev.txt` first).
 
 ### Slack
 

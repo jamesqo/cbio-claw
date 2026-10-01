@@ -105,7 +105,7 @@ use-copilot: ## Switch agent back to GitHub Copilot  →  make use-copilot [MODE
 # ── Tests ─────────────────────────────────────────────────────────────────────
 
 .PHONY: test-unit
-test-unit: ## Run offline preset and mailing-list regression tests (no gateway or credentials)
+test-unit: ## Run offline mailing-list regression tests (no gateway or credentials)
 	PYTHONPATH=docker python3 -m unittest discover -s unit-tests -v
 
 .PHONY: test
