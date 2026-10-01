@@ -70,6 +70,30 @@ class MailingTests(unittest.IsolatedAsyncioTestCase):
         self.client.chat_postMessage.assert_awaited_once()
         self.adapter._message_handler.assert_awaited_once()
 
+    async def test_slackbot_file_share_with_no_text_generates_from_file(self):
+        self.settings = {"forwarder_user_ids": ["USLACKBOT"]}
+        self.write_policy()
+        event = {"channel": "CSUPPORT", "team": "TTEST", "ts": "100.1",
+                 "user": "USLACKBOT", "subtype": "file_share", "text": "",
+                 "files": [{"id": "FEMAIL"}]}
+        with patch.object(mailing, "file_text", AsyncMock(return_value="How do I export MET alterations?")) as read:
+            await self.dispatch(event)
+            await self.dispatch(event)
+        read.assert_awaited_once()
+        message = self.adapter._message_handler.call_args.args[0]
+        self.assertIn("How do I export MET alterations?", message.text)
+        self.assertEqual(message.source.user_id, "USLACKBOT")
+        self.client.chat_postMessage.assert_awaited_once()
+
+    async def test_failed_email_download_never_generates_or_posts(self):
+        event = {**self.event, "attachments": [], "files": [{"id": "FEMAIL"}]}
+        with patch.object(mailing, "file_text", AsyncMock(side_effect=PermissionError("missing files:read"))):
+            with self.assertLogs("cbio_claw.mailing", "ERROR"):
+                await self.dispatch(event)
+        self.adapter._message_handler.assert_not_awaited()
+        self.client.chat_postMessage.assert_not_awaited()
+        self.assertEqual(self.states()[0][1], "failed")
+
     async def test_non_actionable_email_does_not_post(self):
         self.adapter._message_handler.return_value = "NO_REPLY"
         await self.dispatch( self.event)

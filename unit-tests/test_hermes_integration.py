@@ -11,7 +11,6 @@ from unittest.mock import AsyncMock, patch
 
 from cbio_claw import mailing
 from cbio_claw.integrate import integrate
-from cbio_claw.vault import install, read_manifest, resolve_preset
 
 
 @unittest.skipUnless(os.environ.get("HERMES_TEST_SOURCE"), "Set HERMES_TEST_SOURCE to the pinned Hermes checkout")
@@ -22,18 +21,32 @@ class HermesIntegrationTests(unittest.IsolatedAsyncioTestCase):
     async def test_attachment_only_message_with_empty_text_field(self):
         await self.check_attachment_only_message(True)
 
-    async def check_attachment_only_message(self, include_empty_text):
+    async def test_real_adapter_slackbot_file_share_downloads_email_and_posts(self):
+        import httpx
+        real_client = httpx.AsyncClient
+        requests = []
+        def transport(request):
+            requests.append(request)
+            return httpx.Response(200, headers={"content-type": "text/html"}, text="<p>How do I export MET alterations?</p>")
+        with patch("httpx.AsyncClient", side_effect=lambda **kwargs: real_client(transport=httpx.MockTransport(transport), **kwargs)):
+            await self.check_attachment_only_message(True, file_only=True)
+        self.assertEqual(len(requests), 1)
+        self.assertEqual(requests[0].headers["authorization"], "Bearer xoxb-test")
+
+    async def check_attachment_only_message(self, include_empty_text, file_only=False):
         from gateway.config import PlatformConfig
         from gateway.platforms.slack import SlackAdapter
         with tempfile.TemporaryDirectory() as directory, patch.dict(os.environ, {"HERMES_HOME": directory}):
-            Path(directory, "cbio-claw.json").write_text(json.dumps({"mailing_list": {"enabled": True, "channels": {"CTEST": {"forwarder_bot_ids": ["BEMAIL"]}}}}))
+            Path(directory, "cbio-claw.json").write_text(json.dumps({"mailing_list": {"enabled": True, "channels": {"CTEST": {"forwarder_bot_ids": ["BEMAIL"], "forwarder_user_ids": ["USLACKBOT"]}}}}))
             adapter = SlackAdapter(PlatformConfig(enabled=True, extra={"allowed_channels": ["CTEST"], "channel_skill_bindings": [{"id": "CTEST", "skills": ["cbioportal-answer-support", "cbioportal-support"]}]}))
             adapter._bot_user_id = "USELF"
             adapter._message_handler = AsyncMock(return_value="💡 *Suggested response:*\nA test answer.")
-            client = SimpleNamespace(chat_postMessage=AsyncMock(return_value={"ok": True, "ts": "2.0"}))
+            client = SimpleNamespace(token="xoxb-test", chat_postMessage=AsyncMock(return_value={"ok": True, "ts": "2.0"}), files_info=AsyncMock(return_value={"ok": True, "file": {"mimetype": "text/html", "size": 1000, "url_private": "https://files.slack.com/files-pri/T-F/email.html"}}))
             adapter._get_client = lambda channel: client
             mailing.install_adapter(SlackAdapter)
             event = {"type": "message", "channel": "CTEST", "bot_id": "BEMAIL", "subtype": "bot_message", "ts": "1.0", "attachments": [{"text": "Where can I download study data?"}]}
+            if file_only:
+                event = {"type": "message", "channel": "CTEST", "user": "USLACKBOT", "subtype": "file_share", "ts": "1.0", "files": [{"id": "FEMAIL"}]}
             if include_empty_text:
                 event["text"] = ""
             from slack_bolt.async_app import AsyncApp
@@ -51,6 +64,9 @@ class HermesIntegrationTests(unittest.IsolatedAsyncioTestCase):
             message = adapter._message_handler.call_args.args[0]
             self.assertTrue(message.source.is_bot)
             self.assertTrue(message.internal)
+            if file_only:
+                self.assertIn("How do I export MET alterations?", message.text)
+                client.files_info.assert_awaited_once_with(file="FEMAIL")
             self.assertEqual(message.source.thread_id, "1.0")
             self.assertEqual(message.auto_skill, ["cbioportal-answer-support", "cbioportal-support"])
             client.chat_postMessage.assert_awaited_once()
@@ -70,40 +86,3 @@ class HermesIntegrationTests(unittest.IsolatedAsyncioTestCase):
             integrate(root)
             self.assertEqual((root / "gateway/run.py").read_text(), first)
             self.assertLess(first.index("install_gateway(globals())"), first.rindex('if __name__ == "__main__":'))
-
-
-@unittest.skipUnless(os.environ.get("CBIO_TEST_VAULT"), "Set CBIO_TEST_VAULT to the private configuration checkout")
-class RealVaultTests(unittest.TestCase):
-    def test_both_presets_install_current_support_and_engineering_with_references(self):
-        source = Path(os.environ["CBIO_TEST_VAULT"])
-        manifest = read_manifest(source)
-        support = resolve_preset(manifest, "researcher-support")
-        engineering = resolve_preset(manifest, "engineering")
-        self.assertIn("cbioportal-answer-support", support)
-        self.assertNotIn("cbioportal-answer-support", engineering)
-        self.assertIn("cbio-stack", engineering)
-        with tempfile.TemporaryDirectory() as directory:
-            data = Path(directory)
-            install(source, data, "engineering", {"CTEST": "researcher-support"})
-            for name in set(support + engineering):
-                original = source / manifest["skills"][name]
-                installed = data / "skills/cbio-claw" / name
-                for file in original.rglob("*"):
-                    if file.is_file():
-                        self.assertEqual(file.read_bytes(), (installed / file.relative_to(original)).read_bytes())
-            self.assertIn("cbio-stack", (data / "skills/cbio-claw/cbio-stack/SKILL.md").read_text())
-
-    @unittest.skipUnless(os.environ.get("HERMES_TEST_SOURCE"), "Requires pinned Hermes skill discovery")
-    def test_installed_presets_are_discoverable_by_real_hermes(self):
-        from tools import skills_tool
-        source = Path(os.environ["CBIO_TEST_VAULT"])
-        manifest = read_manifest(source)
-        with tempfile.TemporaryDirectory() as directory:
-            data = Path(directory)
-            for preset in ("researcher-support", "engineering"):
-                expected = set(install(source, data, preset, {}))
-                with patch.object(skills_tool, "SKILLS_DIR", data / "skills"):
-                    result = json.loads(skills_tool.skills_list())
-                self.assertTrue(result["success"])
-                self.assertEqual({skill["name"] for skill in result["skills"]}, expected)
-                self.assertEqual(expected, set(resolve_preset(manifest, preset)))

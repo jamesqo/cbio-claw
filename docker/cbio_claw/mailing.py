@@ -15,6 +15,8 @@ from pathlib import Path
 import sqlite3
 import uuid
 
+from cbio_claw.email_files import file_text
+
 
 logger = logging.getLogger(__name__)
 _drafting = ContextVar("cbio_claw_mailing_draft", default=False)
@@ -141,22 +143,24 @@ async def handle_event(adapter, event: dict) -> bool:
     channel = event.get("channel", "")
     if channel not in channels:
         return False
-    if not event.get("bot_id") and event.get("subtype") != "bot_message":
+    user_ids = channels[channel].get("forwarder_user_ids", []) if isinstance(channels[channel], dict) else []
+    user_allowed = isinstance(user_ids, list) and event.get("user") in user_ids
+    if not event.get("bot_id") and event.get("subtype") != "bot_message" and not user_allowed:
         return False  # Normal human conversations remain with Hermes.
     if not enabled(config):
         return True  # Do not let free-response routing bypass the off switch.
     settings = channels[channel]
     bot_ids = settings.get("forwarder_bot_ids", []) if isinstance(settings, dict) else []
-    if not isinstance(bot_ids, list) or not bot_ids:
-        logger.error("No forwarding bot IDs configured for mailing-list channel %s", channel)
+    if not isinstance(bot_ids, list) or not isinstance(user_ids, list) or not (bot_ids or user_ids):
+        logger.error("No forwarding IDs configured for mailing-list channel %s", channel)
         return True
-    if event.get("bot_id") not in bot_ids:
+    if event.get("bot_id") not in bot_ids and event.get("user") not in user_ids:
         return True
     own_users = {getattr(adapter, "_bot_user_id", None)}
     own_users.update(getattr(adapter, "_team_bot_user_ids", {}).values())
     if event.get("user") and event["user"] in own_users:
         return True
-    if event.get("subtype") not in {None, "bot_message"} or (event.get("thread_ts") and event["thread_ts"] != event.get("ts")):
+    if event.get("subtype") not in {None, "bot_message", "file_share"} or (event.get("thread_ts") and event["thread_ts"] != event.get("ts")):
         return True  # Only new top-level forwarded emails trigger automatic suggestions.
     allowed = adapter._slack_allowed_channels()
     if allowed and channel not in allowed:
@@ -164,7 +168,7 @@ async def handle_event(adapter, event: dict) -> bool:
         return True
     timestamp = event.get("ts")
     text = email_text(event)
-    if not timestamp or not text:
+    if not timestamp or not (text or event.get("files")):
         logger.warning("Forwarded email in %s has no timestamp or readable text", channel)
         return True
     if not getattr(adapter, "_message_handler", None):
@@ -199,9 +203,13 @@ async def generate_and_post(adapter, event, ledger, key, channel, timestamp, tex
     try:
         from gateway.platforms.base import MessageEvent, resolve_channel_skills, resolve_channel_prompt
 
+        text = "\n\n".join(part for part in (text, await file_text(adapter, event)) if part)
+        if not text:
+            raise ValueError("Forwarded email contains no readable question text")
+
         source = adapter.build_source(
             chat_id=channel, chat_name=channel, chat_type="group",
-            user_id=event["bot_id"], user_name="Mailing-list forwarder",
+            user_id=event.get("bot_id") or event["user"], user_name="Mailing-list forwarder",
             thread_id=timestamp, is_bot=True,
         )
         # This synthetic event is authorized only after the channel + exact

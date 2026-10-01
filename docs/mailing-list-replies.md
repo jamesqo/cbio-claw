@@ -1,84 +1,71 @@
 # Automatic mailing-list suggestions
 
-The runtime extension hooks the Slack adapter in Hermes `v2026.6.5`. It accepts
-new, top-level forwarded emails only from explicitly configured forwarding bot
-IDs in configured channels. Human conversations and unconfigured channels use
-the normal Hermes path. Do not enable a global bot allow-all flag for this feature.
-
-For an accepted email, the extension preserves complete attachment/block text,
-uses the configured channel skills and model through Hermes, and posts the
-returned suggested response in the email's Slack thread. It does not send email
-to the Google Group. Notifications/spam/reply chains without a new actionable
-question are skipped using `NO_REPLY`.
-
-Generation runs in a tracked background task so Socket Mode event handling
-returns promptly while the model researches the question.
-
-Only the final suggested response is posted. A per-turn configuration override
-disables streaming, progress/interim chatter, and messaging/cron tools during
-generation without changing other Slack conversations or the saved config.
-The synthetic generation event is authorized after exact forwarding-app and
-channel checks, including Hermes's configured allowed channels; human and bot
-allowlists are not widened.
+The extension accepts new top-level forwarded emails from explicit forwarding
+IDs in configured channels. Other conversations use normal Hermes handling.
+Slackbot email forwards can have an empty/absent `text` field and an uploaded
+HTML file; the extension reads the file before generating a suggestion.
 
 ## Opt-in configuration
 
-Install the `researcher-support` preset for the target channel. In the selected
-local/test Hermes data directory, create `cbio-claw.json`:
+In a local/test Hermes data directory, create `cbio-claw.json`:
 
 ```json
 {
   "mailing_list": {
     "enabled": false,
     "channels": {
-      "CTESTSUPPORT": {
-        "forwarder_bot_ids": ["BTESTEMAIL"]
-      }
+      "CTESTSUPPORT": {"forwarder_user_ids": ["USLACKBOT"]}
     }
   }
 }
 ```
 
-Replace placeholders with the test channel and forwarding app's `bot_id`, not
-its display name or user ID. Include the channel in Hermes's allowed-channel
-list if one is configured. The app needs the existing Socket Mode connection,
-channel message events/history, and `chat:write`; it must be invited to the
-channel. Use separate test app tokens while the existing gateway is active.
+Use exact user IDs for Slackbot, or `forwarder_bot_ids` for apps supplying a
+`bot_id`. IDs are scoped to the configured channel; no global allow-all setting
+is needed. Configure the channel's support skills and include it in Hermes's
+allowed-channel list. The app needs message events/history, `files:read`, and
+`chat:write`, plus membership in the channel. Use separate test app credentials.
 
-Changing `enabled` to `true` deliberately activates posting on the next matching
-event. Keep it false until activation is authorized. The file is read each event
-and rechecked before posting. Setting `CBIO_MAILING_REPLIES=off` is an additional
-off switch. Malformed configuration fails closed. Normal manual replies remain
-under Hermes's existing mention/authentication behavior.
+Replies remain off until `enabled` is deliberately set to true. The file is
+read each event and rechecked before posting; `CBIO_MAILING_REPLIES=off` is an
+additional kill switch. Nothing in this PR changes live configuration.
 
-## Delivery state and failures
+## Files and generation
 
-The persistent `cbio-claw-mailing.sqlite3` ledger claims each workspace/channel/
-message timestamp once. Duplicate events, concurrent delivery, reconnects, and
-process restarts do not produce another suggestion. Other bots, own replies,
-message edits, and thread replies do not trigger automatic generation.
+Downloads use the channel's Slack token and `files.info` metadata, accept only
+Slack's HTTPS file CDN (including validated redirects), and cap each file at
+512 KiB and each message at four files. Plain text, HTML and JSON email envelopes
+are supported. Prefer complete `body-plain`; otherwise extract HTML text and
+links without fetching embedded resources. Login/form pages, oversized files,
+and permission failures stop generation and are logged. PDF/image interpretation
+is outside this reader's scope.
 
-States include `drafting`, `generated`, `sending`, `sent`, `skipped`, `failed`,
-`disabled`, and `uncertain`. Generation and delivery failures are logged with
-the event key. Inspect local state without contacting Slack:
+Generation runs in a background task, uses Hermes's model and configured skills,
+and treats the email as untrusted content. Only a final `Suggested response`
+is posted in the original thread; `NO_REPLY` skips non-actionable mail. Streaming,
+progress chatter and messaging/cron tools are disabled for this generation turn.
+The extension does not send email to the Google Group.
 
-```sh
-PYTHONPATH=docker python3 -m cbio_claw.mailing --data-dir /path/to/test-data
-```
+## Delivery state
 
-Only a failed generation can be reset with `--retry-failed EVENT_KEY`; resetting
-does not itself replay the event or send anything. If delivery timed out or the
-process stopped during sending, reconcile the thread first. The ledger stores
-the generated draft and confirmed Slack message timestamp, and sends a stable
-`client_msg_id`, but cannot atomically commit both SQLite and Slack. It therefore
-does not blindly retry uncertain sends. A crash during generation also requires
-operator inspection rather than automatic duplicate processing.
+A persistent SQLite ledger claims each workspace/channel/message timestamp
+once, including across restarts. Bot replies, edits, and true thread replies
+are ignored. Confirmed posts are recorded; ambiguous sends are never blindly
+retried. SQLite and Slack are not an atomic transaction.
 
-## Offline validation
+Inspect local state with `PYTHONPATH=docker python3 -m cbio_claw.mailing
+--data-dir /path/to/test-data`. Only failed generation can be reset with
+`--retry-failed EVENT_KEY`; resetting does not replay or send anything. Reconcile
+uncertain delivery or interrupted generation manually before any replay.
 
-`make test-unit` uses synthetic email events, a fake generator, and fake Slack
-clients. It starts no gateway and needs no tokens. Optional integration tests
-exercise the real pinned Slack adapter and skill discovery with network disabled;
-see the tests' `HERMES_TEST_SOURCE` and `CBIO_TEST_VAULT` environment variables.
-Live model quality and test-workspace permissions still need verification before
-enabling this on a real channel.
+## Validation and upstream
+
+`make test-unit` uses synthetic fixtures and mocked HTTP/generation/Slack clients;
+install `requirements-dev.txt` first. Optional tests use the actual pinned Hermes
+adapter via `HERMES_TEST_SOURCE`. No live replies or model quality are asserted.
+
+Upstream main was inspected at `a3b56cac95488242856b6fb1f121842a38c3e391`.
+It has broader document support and a video-only `file_shared` fallback, but
+`_download_slack_file_bytes` still rejects all `text/html` responses. The pinned
+`v2026.6.5` also excludes HTML from inline text injection. A version upgrade alone
+therefore does not establish support for these HTML email forwards.
