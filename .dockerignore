@@ -1,0 +1,8 @@
+.git
+.idea
+hermes-data
+unit-tests
+tests
+docs
+__pycache__
+*.pyc

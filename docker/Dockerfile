@@ -13,6 +13,8 @@ RUN apt-get update && \
 USER root
 ENV PATH="/opt/hermes/.venv/bin:$PATH"
 
+COPY docker/cbio_claw /opt/hermes/cbio_claw
+
 # /opt/data is the volume mount point — don't copy anything here
 # it will be overwritten by the host volume at runtime
 VOLUME ["/opt/data"]
