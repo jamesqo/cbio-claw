@@ -2,6 +2,9 @@
 
 A customized deployment of [Hermes Agent](https://get-hermes.ai/) tuned for cBioPortal development work at MSK.
 
+For the Docker-socket-free Engineer trial on the development Kubernetes cluster,
+see [the trial manifests and runbook](kubernetes/engineer-trial/README.md).
+
 ## cbio-claw Action Plan
 
 - [x] Set up local LLM inference (oMLX — see [docs/setup-omlx.md](docs/setup-omlx.md))
