@@ -1,0 +1,27 @@
+{
+  "clusterName": "cbioportal-dev-36d15369",
+  "nodegroupName": "engineer-spot",
+  "scalingConfig": {"minSize": 1, "maxSize": 1, "desiredSize": 1},
+  "subnets": ["subnet-0b543497e4043b54e"],
+  "nodeRole": "arn:aws:iam::397229547211:role/userServiceRole-addons-36d15369-20250807200011076400000001",
+  "amiType": "BOTTLEROCKET_x86_64",
+  "capacityType": "SPOT",
+  "instanceTypes": ["m5.large", "m5a.large", "m6i.large", "m6a.large"],
+  "launchTemplate": {"id": "lt-03f85229ee2bab756", "version": "4"},
+  "labels": {"workload": "engineer"},
+  "taints": [{"key": "workload", "value": "engineer", "effect": "NO_SCHEDULE"}],
+  "tags": {
+    "nodegroup-name": "engineer-spot",
+    "application": "cbioportal-for-cancer-genomics",
+    "cdsi-app": "cbioportal",
+    "cdsi-team": "data-visualization",
+    "cdsi-owner": "nasirz1@mskcc.org",
+    "Environment": "dev",
+    "resource-name": "engineer",
+    "env": "dev",
+    "owner-email": "SchultzN@mskcc.org",
+    "application-id": "APM0001910",
+    "Name": "engineer-spot",
+    "cost-center": "50631"
+  }
+}

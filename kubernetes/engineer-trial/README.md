@@ -67,3 +67,44 @@ this trial and must not be stopped or deleted.
 
 This directory contains no credentials. It does not provision an on-demand
 node group or make the Spot-backed trial highly available.
+
+## Dedicated group: pending admin provisioning
+
+As of 2026-11-18, Engineer still runs on addons. Both ON_DEMAND and SPOT
+CreateNodegroup requests were denied: the decoded error reports an explicit
+ec2:RunInstances deny for mskEngineerUser. No dedicated group was created.
+
+An authorized infrastructure administrator can review and submit the request:
+
+```sh
+aws eks create-nodegroup --region us-east-1 --cli-input-json file://nodegroup.json
+aws eks wait nodegroup-active --region us-east-1 --cluster-name cbioportal-dev-36d15369 --nodegroup-name engineer-spot
+```
+
+Use credentials for account 397229547211. The request places one Spot node in
+us-east-1a, matching the existing disk, with several compatible instance types.
+It reuses the addons IAM role and immutable launch-template version 4 (encrypted
+boot disk and existing security groups). The template's EC2 resource tags still
+name addons; the administrator should account for those inherited tags or supply
+an equivalent dedicated template. This separates capacity, not IAM privileges.
+The workload taint excludes ordinary untolerated pods; system DaemonSets may
+still run there. Single-zone placement prevents cross-zone rebalancing, but
+does not prevent Spot reclamation.
+
+After creation, set KUBECONFIG to the explicit dev kubeconfig and run:
+
+```sh
+kubectl wait node -l eks.amazonaws.com/nodegroup=engineer-spot --for=condition=Ready --timeout=300s
+kubectl -n cbio-engineer-trial patch deployment engineer --type=strategic --patch-file dedicated-node-patch.yaml --dry-run=server
+kubectl -n cbio-engineer-trial patch deployment engineer --type=strategic --patch-file dedicated-node-patch.yaml
+kubectl -n cbio-engineer-trial rollout status deployment/engineer --timeout=300s
+kubectl -n cbio-engineer-trial get pods -o wide
+kubectl get nodes -L eks.amazonaws.com/nodegroup,eks.amazonaws.com/capacityType
+```
+
+The patch preserves the live replica count. Recreate stops the existing listener
+before starting the replacement; allow for disk transfer and image download.
+Verify the pod runs on engineer-spot, Slack reconnects, and a user message receives
+a reply before declaring completion. Do not apply the patch before capacity is
+ready. For future deployments retain this patch with the base manifest: the base
+alone stages zero replicas and does not select the dedicated node group.

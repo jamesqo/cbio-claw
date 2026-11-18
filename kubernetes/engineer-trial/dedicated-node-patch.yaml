@@ -1,0 +1,11 @@
+spec:
+  template:
+    spec:
+      nodeSelector:
+        kubernetes.io/arch: amd64
+        eks.amazonaws.com/nodegroup: engineer-spot
+      tolerations:
+        - key: workload
+          operator: Equal
+          value: engineer
+          effect: NoSchedule
