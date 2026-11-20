@@ -34,6 +34,39 @@ an inline reply. Preserve the source PVC for rollback. For rollback stop Daikon'
 hermes-cbio-engineer container before scaling the EKS Deployment back to one.
 New conversation state on Daikon must be reconciled before permanent rollback.
 
+## E2E triage and disposable deployments
+
+The engineering profile's `cbio-e2e-triage` skill reads public GitHub status
+checks and CircleCI Playwright reports. Pass it a frontend PR, commit, branch,
+or CircleCI job URL. The current cBioPortal frontend does not need a CircleCI
+token for these reports.
+
+The cBioPortal deployment MCP runs in a separate Docker container and uses
+private Unix sockets for tool calls and browser forwarding. Deployment state
+lives under `~/cbio-engineer/deployment-mcp-state`. The tool uses the existing
+`work/checkouts` and `work/test-data` directories as read-only inputs. The
+`cbio-daikon-deployment` skill explains which host paths to pass and how to
+reach a ready test portal from Playwright.
+
+On Daikon, use the pinned deployment MCP source to build its image:
+
+```sh
+git clone https://github.com/jamesqo/cbio-deployment-mcp.git
+git -C cbio-deployment-mcp checkout --detach 1ee6d20e6b7bba7263f67b26a459e9dbf4bac226
+docker build -t cbio-deployment-mcp:1ee6d20 cbio-deployment-mcp
+```
+
+With Engineer running and no deployment in progress, run
+`bash daikon/install-integrations.sh` from this repository on Daikon. The
+installer copies the skills and relay, starts the sidecar, and backs up any
+engineering-profile configuration it changes. Restart
+`hermes-cbio-engineer` to load the MCP and verify its Slack Socket Mode
+connection. Check the MCP by listing deployments and try E2E triage against
+a known failing frontend commit. If rolling back, restore the backed-up
+engineering configuration and `SOUL.md`, remove these two profile-local skills, restart
+Engineer, and stop the sidecar. Keep its state directory if there are
+disposable deployments to recover.
+
 ## Tailscale without sudo
 
 Tailscale 1.104.7 static binaries are in ~/.local/opt/tailscale. Its private state
